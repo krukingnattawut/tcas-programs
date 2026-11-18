@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TCAS ลองเล่น</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--ink:#16213e;--mut:#5d6783;--line:#dde1ee;--acc:#1f6feb;--accf:#fff;--ok:#12805c;--okb:#e1f5ec;--bad:#b42318;--badb:#fdeceb;--warn:#fff4d6;--warnt:#7a5300}
+@media (prefers-color-scheme:dark){:root{--bg:#10131c;--card:#1a1f2e;--ink:#eef1fa;--mut:#9aa3bd;--line:#2c3348;--acc:#6ea8ff;--accf:#0b1020;--ok:#5fd3a3;--okb:#12362a;--bad:#ff8f84;--badb:#3a1a18;--warn:#3a2f10;--warnt:#ffd978}}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans Thai",system-ui,sans-serif;line-height:1.6;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+main{max-width:600px;margin:0 auto;padding:14px 14px 50px}
+h1{font-size:20px;margin:4px 0;font-weight:800}h2{font-size:18px;margin:0 0 6px;font-weight:800}p{margin:6px 0}
+.sub{color:var(--mut);font-size:14px}
+.bar{display:flex;gap:6px;margin:10px 0}.bar div{flex:1;text-align:center;font-size:12px;padding:6px 2px;border-radius:8px;background:var(--card);border:1px solid var(--line);color:var(--mut)}
+.bar .on{background:var(--acc);color:var(--accf);border-color:var(--acc);font-weight:600}.bar .done{opacity:.5}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+.hrow{display:flex;justify-content:space-between;align-items:center;gap:8px}.hearts{font-size:22px;letter-spacing:2px}
+.opt{display:flex;gap:10px;align-items:center;padding:10px;border:1.5px solid var(--line);border-radius:12px;margin:7px 0;cursor:pointer;background:var(--card);width:100%;text-align:left;font:inherit;color:inherit}
+.opt.sel{border-color:var(--acc)}.opt:disabled{opacity:.45;cursor:not-allowed}
+.opt small{color:var(--mut);display:block;font-size:12px}.opt>span:last-child{flex:1}
+.rk{min-width:28px;height:28px;border-radius:50%;background:var(--line);display:grid;place-items:center;font-weight:600;font-size:13px}.sel .rk{background:var(--acc);color:var(--accf)}
+button.b{font:inherit;font-weight:600;border:0;border-radius:12px;padding:12px 14px;width:100%;margin-top:8px;cursor:pointer;background:var(--acc);color:var(--accf)}
+button.b.g{background:transparent;color:var(--ink);border:1.5px solid var(--line)}button.b.r{background:var(--bad);color:#fff}button.b:disabled{opacity:.4;cursor:not-allowed}
+a.b{display:block;text-align:center;text-decoration:none}
+.note{background:var(--warn);color:var(--warnt);padding:9px 11px;border-radius:10px;font-size:14px;margin:9px 0}
+.chip{padding:1px 8px;border-radius:8px;font-weight:600;font-size:12px;display:inline-block}
+.chip.ok{background:var(--okb);color:var(--ok)}.chip.bad{background:var(--badb);color:var(--bad)}.chip.warn{background:var(--warn);color:var(--warnt)}
+input.t,select.t{font:inherit;width:100%;padding:10px;border:1.5px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);margin:5px 0}
+.grid{display:grid;grid-template-columns:1fr 90px;gap:6px;align-items:center}
+.mini{border:1px solid var(--line);background:none;color:var(--ink);border-radius:8px;padding:2px 9px;font:inherit;cursor:pointer}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:20px;z-index:9}.modal.on{display:flex}.modal .card{max-width:340px;width:100%}
+.adm{background:var(--warn);color:var(--warnt);border-radius:12px;padding:10px;margin:8px 0;font-size:13px}
+.adm select,.adm button{font:inherit;font-size:13px;margin:2px;padding:4px 8px}
+.big{font-size:42px;text-align:center;margin:0}
+</style>
+</head>
+<body>
+<main>
+<div class="hrow"><h1>TCAS ลองเล่น</h1><button class="mini" onclick="reset()">เริ่มใหม่</button></div>
+<p class="sub" id="hi">จำลองเพื่อฝึกตัดสินใจ ไม่ใช่ระบบจริง</p>
+<div id="adm"></div>
+<div class="bar" id="bar"></div>
+<div id="v"></div>
+</main>
+<div class="modal" id="m"><div class="card"><h2>ยืนยันด้วย OTP</h2>
+<p class="sub">ในเว็บจริงจะส่งรหัสทาง SMS หรืออีเมล ที่นี่ใช้รหัส <b>1111</b></p>
+<input class="t" id="otp" inputmode="numeric" maxlength="4" placeholder="รหัส OTP">
+<p id="oh" class="sub"></p><button class="b" onclick="okOtp()">ยืนยัน</button><button class="b g" onclick="closeM()">ยกเลิก (หัวใจไม่ลด)</button></div></div>
+<script>
+const $=i=>document.getElementById(i),hr=n=>'❤️'.repeat(n)+'🤍'.repeat(3-n),pg=id=>D.find(p=>p.id==id);
+const EX=[['TGAT','TGAT'],['TPAT3','TPAT3 วิทย์-วิศว'],['TPAT4','TPAT4 สถาปัตย์'],['TPAT5','TPAT5 ครุศาสตร์'],['M1','A-Level คณิต 1'],['M2','A-Level คณิต 2'],['PHY','A-Level ฟิสิกส์'],['CHE','A-Level เคมี'],['BIO','A-Level ชีววิทยา'],['SCI','A-Level วิทย์ประยุกต์'],['THA','A-Level ไทย'],['SOC','A-Level สังคม'],['ENG','A-Level อังกฤษ'],['FL','A-Level ภาษาต่างประเทศ']];
+const RN={1:{n:'รอบ 1 Portfolio',max:3,u:1,d:'สมัครกับมหาวิทยาลัยโดยตรง ใช้ผลงาน ไม่ใช้คะแนนสอบ (ในเว็บนี้ผลออกแบบสุ่ม)'},2:{n:'รอบ 2 Quota',max:2,u:1,d:'สมัครกับมหาวิทยาลัย ใช้โควตา (ผลออกแบบสุ่ม)'},3:{n:'รอบ 3 Admission',max:10,d:'สมัครผ่าน myTCAS เรียงอันดับได้สูงสุด 10 (ปีนี้ฟรี 7 อันดับ) ใช้คะแนนสอบตามสูตรของแต่ละสาขา'},4:{n:'รอบ 4 Direct Admission',max:3,u:1,d:'สมัครกับมหาวิทยาลัย เป็นรอบสุดท้าย ไม่มีสละสิทธิ์ (ผลออกแบบสุ่ม)'}};
+let D=[],cfg={},s,cb=null,uh=true,admin=false;
+const need=p=>[...new Set(Object.keys(p.w).filter(k=>k!='GPAX').map(k=>/^TGAT\d$/.test(k)?'TGAT':k))];
+const miss=p=>need(p).filter(k=>!s.ex.includes(k));
+const sc=p=>{let t=0;for(const k in p.w){const v=k=='GPAX'?s.gpax/4*100:/^TGAT\d$/.test(k)?s.sc.TGAT:s.sc[k];t+=p.w[k]*(v||0)/100}return t};
+function est(p){const x=sc(p),a=p.s69.min,b=p.s69.max;if(!a)return['','ไม่มีสถิติ'];if(x<a)return['bad','ต่ำกว่าต่ำสุดปี 69'];if(x>=b)return['ok','สูงกว่าสูงสุดปี 69'];return(x-a)/(b-a)>.5?['ok','น่าจะผ่าน']:['warn','เสี่ยง ใกล้คะแนนต่ำสุด']}
+const lock=p=>{const m=miss(p);if(m.length)return'ต้องสอบ '+m.join(', ');if(p.gpaxMin&&s.gpax<p.gpaxMin)return'GPAX ต้อง ≥ '+p.gpaxMin;return''};
+function reset(){s={ph:'reg',h:3,r:1,name:'',ex:[],dex:[],sc:{},gpax:3,wv:0,seat:null,sel:[],rank:[],app:[],pass:[],ch:null,log:[],q:'',pick:null};draw()}
+function go(ph){s.ph=ph;s.sel=[];s.ch=null;s.q='';s.h=ph=='waive'?1:3;if(ph=='apply'){s.rank=[];s.app=[]}draw()}
+function nextRound(){if(s.r==4)end(null);else{s.r++;go('apply')}}
+function end(x){s.seat=x;s.ph='end';draw()}
+function ask(f,heart){cb=f;uh=heart;$('otp').value='';$('oh').textContent=heart?'หัวใจจะลด 1 ดวงเมื่อยืนยันสำเร็จ':'';$('m').classList.add('on')}
+function closeM(){$('m').classList.remove('on')}
+function okOtp(){if($('otp').value!=='1111'){$('oh').textContent='รหัสไม่ถูกต้อง (ลอง 1111)';return}closeM();if(uh)s.h--;cb();draw()}
+function togE(k){const i=s.dex.indexOf(k);i>-1?s.dex.splice(i,1):s.dex.push(k);draw()}
+function pick(id){const a=RN[s.r].u?s.sel:s.rank,i=a.indexOf(id);if(i>-1)a.splice(i,1);else if(a.length<RN[s.r].max)a.push(id);rl()}
+function mv(i,d){const a=s.rank,j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];rl()}
+function rm(i){s.rank.splice(i,1);rl()}
+function fq(v){s.q=v;ll()}
+function list(){const r=RN[s.r],a=r.u?s.sel:s.rank,q=s.q.trim();
+ return D.filter(p=>!q||(p.name+p.fac).includes(q)).map(p=>{const i=a.indexOf(p.id),lk=r.u?'':lock(p),e=r.u?null:est(p);
+ return `<button class="opt ${i>-1?'sel':''}" ${lk?'disabled':''} onclick="pick('${p.id}')"><span class="rk">${i>-1?i+1:''}</span><span>${p.name}<small>${p.uni} ${p.fac}${r.u?'':lk?' · 🔒 '+lk:` · คะแนนคุณ ${sc(p).toFixed(1)} · ปี 69: ${p.s69.min??'-'}–${p.s69.max??'-'} <span class="chip ${e[0]}">${e[1]}</span>`}</small></span></button>`}).join('')||'<p class="sub">ไม่พบหลักสูตร</p>'}
+function rk(){if(RN[s.r].u)return'';return `<h2>อันดับที่เลือก (${s.rank.length}/10)</h2>`+(s.rank.map((id,i)=>`<div class="hrow"><span>${i+1}. ${pg(id).name}</span><span><button class="mini" onclick="mv(${i},-1)">▲</button> <button class="mini" onclick="mv(${i},1)">▼</button> <button class="mini" onclick="rm(${i})">✕</button></span></div>`).join('')||'<p class="sub">แตะหลักสูตรด้านล่างเพื่อเพิ่มเข้าอันดับ</p>')+(s.rank.length>7?'<div class="note">เกิน 7 อันดับ อาจมีค่าสมัครในระบบจริง</div>':'')}
+function rl(){if($('lst'))$('lst').innerHTML=list();if($('rk'))$('rk').innerHTML=rk();const b=$('sb');if(b)b.disabled=!(RN[s.r].u?s.sel:s.rank).length}
+function ll(){$('lst').innerHTML=list()}
+function submit(){const r=RN[s.r];if(r.u){s.app=[...s.sel];s.log.push(r.n+': สมัคร '+s.app.length+' สาขา');toResult()}else ask(()=>{s.app=[...s.rank];s.log.push(r.n+': ยื่น '+s.app.length+' อันดับ')},true)}
+function toResult(){let ps=[];
+ if(RN[s.r].u)ps=s.app.filter(id=>{const p=pg(id),c=Math.min(.8,Math.max(.05,(p.s69.seat||10)/(p.s69.apps||100)*.9));return Math.random()<c});
+ else for(const id of s.app){if(sc(pg(id))>=(pg(id).s69.min||0)){ps=[id];break}}
+ s.pass=ps;s.pick=ps[0];s.ph='result';s.h=3;draw()}
+function manage(t){ask(()=>{s.ch={t,id:s.pick}},true)}
+function afterManage(){const c=s.ch;
+ if(!c||c.t=='no'){s.log.push(RN[s.r].n+': ไม่ใช้สิทธิ์'+(c?'':' (หมดเวลาโดยไม่กดอะไร)'));nextRound();return}
+ s.log.push(RN[s.r].n+': ยืนยันสิทธิ์ '+pg(c.id).name);s.conf=c.id;
+ if(s.r<4&&s.wv==0)go('waive');else end(c.id)}
+function waive(){ask(()=>{s.wv=1;s.waived=1;s.log.push('สละสิทธิ์ '+pg(s.conf).name+' (สละได้ครั้งเดียวตลอดฤดู)')},true)}
+function afterWaive(){if(s.waived){s.waived=0;nextRound()}else end(s.conf)}
+function rand(){EX.forEach(([k])=>s.sc[k]=Math.round(30+Math.random()*60));s.gpax=+(2.5+Math.random()*1.5).toFixed(2)}
+function jump(v){const[ph,r]=v.split(':');if(!s.ex.length){s.ex=EX.map(e=>e[0]);rand()}s.r=+r||1;s.name=s.name||'ครู (ทดสอบ)';go(ph);if(ph=='result'){s.app=s.r==3?['cu-cp','cu-cs','cu-econ']:['cu-cp','cu-econ'];toResult()}}
+function admBar(){if(!admin){$('adm').innerHTML='';return}
+ $('adm').innerHTML=`<div class="adm"><b>โหมดครู</b> · ข้อมูล: ${cfg.src} (${D.length} หลักสูตร)${cfg.err?' · '+cfg.err:''}<br>
+ ข้ามไป: <select id="js" onchange="jump(this.value)"><option>เลือกขั้น...</option><option value="exam:1">สมัครสอบ</option><option value="score:1">กรอกคะแนน</option><option value="apply:1">รอบ 1</option><option value="apply:2">รอบ 2</option><option value="apply:3">รอบ 3 (เลือกอันดับ)</option><option value="result:3">ผลรอบ 3</option><option value="manage:3">จัดการสิทธิ์รอบ 3</option><option value="apply:4">รอบ 4</option></select>
+ <button onclick="load(1)">รีโหลด Sheet</button> ${cfg.sheetUrl?`<a href="${cfg.sheetUrl}" target="_blank">เปิด Google Sheet</a>`:''} <button onclick="chk()">ตรวจข้อมูล</button> <button onclick="rand();draw()">สุ่มคะแนน</button><div id="ck"></div></div>`}
+function chk(){const o=D.filter(p=>Object.values(p.w).reduce((a,b)=>a+b,0)!=100||!p.s69.min).map(p=>p.name+' (น้ำหนักรวม '+Object.values(p.w).reduce((a,b)=>a+b,0)+')');$('ck').innerHTML=o.length?'⚠ ตรวจพบ: '+o.join(', '):'✅ น้ำหนักทุกสาขารวม 100 และมีสถิติครบ'}
+function draw(){admBar();$('hi').textContent=s.name?'สวัสดี '+s.name:'จำลองเพื่อฝึกตัดสินใจ ไม่ใช่ระบบจริง';
+ $('bar').innerHTML=[1,2,3,4].map(i=>`<div class="${s.ph=='end'?'done':i==s.r&&!['reg','exam','score'].includes(s.ph)?'on':i<s.r?'done':''}">รอบ ${i}</div>`).join('');
+ const v=$('v'),r=RN[s.r];let h='';
+ if(s.ph=='reg')h=`<div class="card"><h2>ขั้นที่ 1: ลงทะเบียน myTCAS</h2><p>ลงทะเบียนในแบบฟอร์มของครู แล้วกลับมากรอกชื่อเดียวกันเพื่อเข้าระบบจำลอง</p>${cfg.formUrl?`<a class="b g" style="padding:12px;border-radius:12px;margin-top:8px;border:1.5px solid var(--line);color:var(--ink);font-weight:600;display:block;text-align:center;text-decoration:none" href="${cfg.formUrl}" target="_blank">เปิด Google Form</a>`:'<div class="note">ครูยังไม่ได้ตั้งลิงก์ Google Form (ตัวแปร FORM_URL)</div>'}<input class="t" id="nm" placeholder="ชื่อ-นามสกุล" value="${s.name}"><button class="b" onclick="const n=$('nm').value.trim();if(!n){alert('กรอกชื่อก่อน');return}s.name=n;ask(()=>go('exam'),false)">เข้าสู่ระบบ (ยืนยัน OTP)</button></div>`;
+ else if(s.ph=='exam'){const done=s.ex.length>0;h=`<div class="card"><div class="hrow"><h2>ขั้นที่ 2: สมัครสอบ</h2><span class="hearts">${hr(s.h)}</span></div><p class="sub">เลือกวิชาที่จะสอบ (ปีนี้ฟรี TGAT/TPAT และ A-Level สูงสุด 7 วิชา) ยืนยัน OTP แต่ละครั้งใช้ 1 หัวใจ</p>${EX.map(([k,n])=>`<button class="opt ${s.dex.includes(k)?'sel':''}" ${s.h==0?'disabled':''} onclick="togE('${k}')"><span class="rk">${s.dex.includes(k)?'✓':''}</span><span>${n}</span></button>`).join('')}<button class="b" ${s.h==0||!s.dex.length?'disabled':''} onclick="ask(()=>{s.ex=[...s.dex]},true)">ยืนยันสมัครสอบ</button>${done?`<div class="note">สมัครสอบแล้ว: ${s.ex.join(', ')}</div><button class="b" onclick="go('score')">ไปสอบและกรอกคะแนน</button>`:''}<button class="b g" onclick="go('score')">ข้ามการสอบ</button></div>`}
+ else if(s.ph=='score')h=`<div class="card"><h2>กรอกคะแนนสอบของคุณ</h2><p class="sub">ใส่คะแนนที่คิดว่าจะได้ (0–100) เพื่อลองดูว่าจะติดอันดับไหน มีเฉพาะวิชาที่สมัครสอบ</p>${s.ex.length?'':'<div class="note">คุณไม่ได้สมัครสอบวิชาใดเลย รอบ 3 จะยื่นไม่ได้</div>'}<div class="grid">${EX.filter(e=>s.ex.includes(e[0])).map(([k,n])=>`<span>${n}</span><input class="t" type="number" min="0" max="100" value="${s.sc[k]??50}" oninput="s.sc['${k}']=Math.min(100,Math.max(0,+this.value))">`).join('')}<span>GPAX (0–4)</span><input class="t" type="number" step="0.01" min="0" max="4" value="${s.gpax}" oninput="s.gpax=Math.min(4,Math.max(0,+this.value))"></div><button class="b" onclick="EX.forEach(([k])=>{if(s.ex.includes(k)&&s.sc[k]==null)s.sc[k]=50});s.r=1;go('apply')">ไปสมัครรอบ 1</button></div>`;
+ else if(s.ph=='apply'){const a=r.u?s.sel:s.rank;h=`<div class="card"><div class="hrow"><h2>${r.n}</h2>${r.u?'':`<span class="hearts">${hr(s.h)}</span>`}</div><p class="sub">${r.d}</p>${r.u?`<p>เลือกได้สูงสุด ${r.max} สาขา (ติดได้หลายที่ ยืนยันได้ที่เดียว)</p>`:''}<div id="rk">${rk()}</div><input class="t" placeholder="ค้นหาหลักสูตร/คณะ" value="${s.q}" oninput="fq(this.value)"><div id="lst">${list()}</div><button class="b" id="sb" ${a.length&&!(!r.u&&s.h==0)?'':'disabled'} onclick="submit()">${r.u?'ส่งใบสมัคร':'ยืนยันอันดับ (OTP)'}</button>${!r.u&&s.app.length?`<div class="note">ยื่นไว้ ${s.app.length} อันดับ แก้ได้ตามหัวใจที่เหลือ</div><button class="b" onclick="toResult()">ปิดรับสมัคร ดูผลประกาศ</button>`:''}<button class="b g" onclick="s.log.push(RN[s.r].n+': ข้ามรอบนี้');nextRound()">ข้ามรอบนี้</button></div>`}
+ else if(s.ph=='result'){h=`<div class="card"><h2>ผลประกาศ ${r.n}</h2>`;
+  if(!r.u){const k=s.pass.length?s.app.indexOf(s.pass[0]):99;h+=s.app.map((id,i)=>{const p=pg(id);return `<p>อันดับ ${i+1} ${p.name}<br><small class="sub">คะแนนคุณ ${sc(p).toFixed(2)} / ต่ำสุดปี 69 ${p.s69.min}</small> ${i==k?'<span class="chip ok">ได้ที่นั่ง</span>':i<k?'<span class="chip bad">ไม่ติด</span>':'<span class="sub">ไม่ถูกพิจารณา</span>'}</p>`}).join('')+'<p class="sub">ระบบพิจารณาจากอันดับ 1 ลงไป ติดอันดับแรกที่ผ่านแล้วหยุด (ในระบบจริงมีประกาศครั้งที่ 2 ด้วย)</p>'}
+  else h+=s.app.map(id=>`<p>${pg(id).name} ${s.pass.includes(id)?'<span class="chip ok">ติด</span>':'<span class="chip bad">ไม่ติด</span>'}</p>`).join('');
+  h+=s.pass.length?`<div class="note">ติดแล้วยังไม่จบ ต้องเข้าไปจัดการสิทธิ์ ถ้าไม่ทำอะไรจะถือว่า “ไม่ใช้สิทธิ์”</div><button class="b" onclick="go('manage')">ไปจัดการสิทธิ์</button>`:`<p>รอบนี้ไม่ติด ไปรอบถัดไปได้</p><button class="b" onclick="nextRound()">${s.r==4?'ดูสรุป':'ไปรอบต่อไป'}</button>`;h+='</div>'}
+ else if(s.ph=='manage'){const c=s.ch;h=`<div class="card"><div class="hrow"><h2>จัดการสิทธิ์ ${r.n}</h2><span class="hearts">${hr(s.h)}</span></div>${s.pass.length>1?s.pass.map(id=>`<button class="opt ${s.pick==id?'sel':''}" onclick="s.pick='${id}';draw()"><span class="rk">${s.pick==id?'✓':''}</span><span>${pg(id).name}</span></button>`).join(''):`<p><b>${pg(s.pick).name}</b></p>`}<div class="note">ยืนยัน = ที่นั่งเป็นของคุณ สมัครรอบถัดไปไม่ได้ เว้นแต่สละสิทธิ์ในช่วงที่เปิด<br>ไม่ใช้สิทธิ์ = ปล่อยที่นั่ง แล้วสมัครรอบถัดไปได้</div><button class="b" ${s.h==0?'disabled':''} onclick="manage('yes')">ยืนยันสิทธิ์</button><button class="b g" ${s.h==0?'disabled':''} onclick="manage('no')">ไม่ใช้สิทธิ์</button>${c?`<div class="note">สถานะตอนนี้: ${c.t=='yes'?'ยืนยันสิทธิ์':'ไม่ใช้สิทธิ์'}</div>`:''}<button class="b" onclick="afterManage()">${c?'หมดเวลาจัดการสิทธิ์ (ยึดตามสถานะนี้)':'หมดเวลาโดยไม่กดอะไร'}</button></div>`}
+ else if(s.ph=='waive')h=`<div class="card"><div class="hrow"><h2>ช่วงสละสิทธิ์</h2><span class="hearts">${hr(s.h)}</span></div><p>คุณยืนยันสิทธิ์ <b>${pg(s.conf).name}</b> ไว้แล้ว</p><div class="note">สละสิทธิ์ได้ครั้งเดียวตลอดฤดู และมีแค่ 1 หัวใจ สละแล้วที่นั่งหายไป แต่ได้สมัครรอบถัดไป</div><button class="b r" ${s.h==0?'disabled':''} onclick="waive()">สละสิทธิ์</button><button class="b" onclick="afterWaive()">${s.waived?'ไปรอบต่อไป':'ไม่สละ เก็บที่นั่งนี้'}</button></div>`;
+ else if(s.ph=='end')h=`<div class="card"><p class="big">${s.seat?'🎓':'📭'}</p><h2 style="text-align:center">${s.seat?'ได้ที่นั่ง '+pg(s.seat).name:'จบฤดูกาลโดยไม่มีที่นั่ง'}</h2><p><b>เส้นทางของ ${s.name}</b></p><ul>${s.log.map(x=>`<li>${x}</li>`).join('')}</ul><div class="note">ข้อคิด: (1) ติดแล้วต้องกดยืนยันเอง ไม่กดคือไม่ใช้สิทธิ์ (2) ยืนยันแล้วปิดทางรอบถัดไป เว้นแต่สละ ซึ่งทำได้ครั้งเดียว (3) หัวใจมี 3 ดวง ตรวจให้ดีก่อนใส่ OTP (4) รอบ 3 ยิ่งเรียงอันดับที่อยากเรียนจริงไว้ก่อน ยิ่งดี</div><button class="b" onclick="reset()">เล่นใหม่</button></div>`;
+ v.innerHTML=h}
+async function load(f){try{const j=await (await fetch('/api/data?t='+(f?Date.now():0))).json();D=j.programs;cfg=j}catch(e){D=(await (await fetch('/programs.json')).json()).programs;cfg={src:'bundled (ไม่มี API)'}}draw()}
+async function init(){reset();await load(0);if(/[?&]admin/.test(location.search)){const pw=prompt('รหัสผ่านครู');if(pw){try{const j=await (await fetch('/api/admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:pw})})).json();admin=j.ok;if(!j.ok)alert(j.configured?'รหัสไม่ถูกต้อง':'ยังไม่ได้ตั้ง ADMIN_PASSWORD บน Vercel')}catch(e){alert('เรียก /api/admin ไม่ได้')}draw()}}}
+init();
+</script>
+</body>
+</html>
